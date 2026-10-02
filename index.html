@@ -307,4 +307,49 @@ document.getElementById("adminLoginBtn").onclick=adminLogin;
 document.querySelector(".logout").onclick=async()=>{localStorage.removeItem("formation_admin_token");LIVE_TOKEN="";location.reload()};
 if(LIVE_TOKEN) verifyAdmin();
 </script>
+
+<script>
+(function(){
+  function openAdminPage(pageId, clicked){
+    var page=document.getElementById(pageId);
+    if(!page){ console.error("Page not found:",pageId); return; }
+
+    document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active")});
+    page.classList.add("active");
+
+    document.querySelectorAll(".nav").forEach(function(n){n.classList.remove("active")});
+    if(clicked) clicked.classList.add("active");
+
+    // Close request drawer/modals if open.
+    var drawer=document.getElementById("drawer");
+    if(drawer) drawer.classList.remove("open");
+    document.querySelectorAll(".modal.open").forEach(function(m){m.classList.remove("open")});
+
+    // Refresh live data where appropriate.
+    if(pageId==="requests" && typeof loadLiveRequests==="function") loadLiveRequests();
+    window.scrollTo({top:0,behavior:"instant"});
+  }
+
+  // Delegated click: works even if menu elements are changed/re-rendered.
+  document.addEventListener("click",function(e){
+    var nav=e.target.closest(".nav[data-page]");
+    if(nav){
+      e.preventDefault();
+      e.stopPropagation();
+      openAdminPage(nav.getAttribute("data-page"),nav);
+      return;
+    }
+    var go=e.target.closest("[data-go]");
+    if(go){
+      e.preventDefault();
+      var target=go.getAttribute("data-go");
+      var navTarget=document.querySelector('.nav[data-page="'+target+'"]');
+      openAdminPage(target,navTarget);
+    }
+  },true);
+
+  // Expose for debugging / buttons.
+  window.openAdminPage=openAdminPage;
+})();
+</script>
 </body></html>
