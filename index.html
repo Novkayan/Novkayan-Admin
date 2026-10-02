@@ -21,8 +21,21 @@
 .workflow{display:flex;gap:0;margin:15px 0 5px;overflow:auto}.wf{min-width:125px;text-align:center;position:relative;padding-top:32px;color:var(--muted);font-size:11px}.wf:before{content:"";position:absolute;top:11px;right:0;left:0;height:3px;background:#dfe6ee}.wf:first-child:before{right:50%}.wf:last-child:before{left:50%}.wf i{position:absolute;top:0;right:calc(50% - 12px);width:25px;height:25px;border-radius:50%;background:#dfe6ee;display:grid;place-items:center;font-style:normal;color:#fff;z-index:2}.wf.done i{background:var(--green)}.wf.done:before{background:var(--green)}.wf.current i{background:var(--blue);box-shadow:0 0 0 4px #e6f0ff}.priority{display:inline-block;padding:5px 9px;border-radius:7px;background:#fff1e7;color:#d86e1e}.internal{background:#fff9e8;border:1px solid #f1dfad;border-radius:9px;padding:12px;margin-top:8px}.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.action-card{border:1px solid var(--line);background:#fff;border-radius:9px;padding:12px;cursor:pointer;text-align:center}.action-card:hover{border-color:#8eb8f5;background:#f8fbff}.progress{height:8px;background:#e7edf3;border-radius:8px;overflow:hidden}.progress i{display:block;height:100%;background:var(--blue)}@media(max-width:650px){.action-grid{grid-template-columns:1fr}}
 
 .modal{display:none;position:fixed;inset:0;background:rgba(3,18,32,.58);z-index:80;align-items:center;justify-content:center;padding:20px}.modal.open{display:flex}.modalbox{width:min(760px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:14px;padding:22px}.modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.quote-lines{width:100%;border-collapse:collapse}.quote-lines input{width:100%;padding:8px;border:1px solid var(--line);border-radius:7px}.totals{margin-right:auto;width:min(320px,100%);margin-top:15px}.totals div{display:flex;justify-content:space-between;padding:7px 0}.totals .grand{font-size:18px;font-weight:bold;border-top:1px solid var(--line);margin-top:5px;padding-top:12px}
+
+.authgate{position:fixed;inset:0;background:linear-gradient(135deg,#061b31,#0b4f86);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.authgate.hide{display:none}.authbox{width:min(430px,100%);background:#fff;border-radius:18px;padding:28px;box-shadow:0 25px 70px #0005}
+.authbox input{width:100%;padding:12px;border:1px solid #dce5ee;border-radius:9px;margin:7px 0}.authmsg{margin-top:12px;padding:10px;border-radius:8px;background:#eef6ff}.autherr{background:#fff0f0;color:#a22}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#18b883;margin-left:6px}
 </style></head>
 <body>
+<div class="authgate" id="authGate"><div class="authbox">
+<h2>دخول الإدارة</h2><p class="sub">لوحة الإدارة مرتبطة بقاعدة البيانات الحقيقية.</p>
+<input id="adminEmail" type="email" value="k@gmail.com" placeholder="البريد الإلكتروني">
+<input id="adminPassword" type="password" placeholder="كلمة المرور">
+<button class="btn primary" id="adminLoginBtn">تسجيل الدخول</button>
+<div id="adminAuthMsg"></div>
+</div></div>
+
 <div class="app">
 <aside class="sidebar">
  <div class="brand"><div class="brandmark">◆</div><div><b>منصة تأسيس الشركات</b><small>لوحة الإدارة</small></div></div>
@@ -44,7 +57,7 @@
 <header class="topbar">
  <div class="date"><span class="cal">▣</span><div>الثلاثاء 23 أبريل 2024 م<br><small>10:42 ص</small></div></div>
  <div class="search"><span>⌕</span><input placeholder="ابحث عن طلب، عميل، شركة، فاتورة ..."></div>
- <div class="admin"><div class="avatar">👨🏻</div><div><b>أحمد المدير</b><small style="display:block;color:#74849a">مدير النظام</small></div><div class="bell">♧<i>5</i></div></div>
+ <div class="admin"><div class="avatar">👨🏻</div><div><b><span id="liveAdminName">مدير النظام</span></b><small style="display:block;color:#74849a">Admin <span class="live-dot"></span></small></div><div class="bell">♧<i>5</i></div></div>
 </header>
 <div class="content">
 <section class="page active" id="home">
@@ -150,7 +163,7 @@ function openRequest(ref){
 }
 function addInternalNote(){
  let t=document.getElementById("internalNote"); if(!t||!t.value.trim())return;
- let n=document.createElement("div");n.className="internal";n.innerHTML="<b>أحمد المدير</b><br>"+t.value.replace(/</g,"&lt;")+"<br><small class='sub'>الآن</small>";
+ let n=document.createElement("div");n.className="internal";n.innerHTML="<b><span id="liveAdminName">مدير النظام</span></b><br>"+t.value.replace(/</g,"&lt;")+"<br><small class='sub'>الآن</small>";
  document.getElementById("notes").prepend(n);t.value="";
 }
 rows("recentRows",requests);rows("requestRows",requests);
@@ -175,5 +188,104 @@ function renderQuoteTable(){let page=document.getElementById("quotes");let table
 function renderInvoiceTable(){let page=document.getElementById("invoices");let table=page.querySelector("table");if(sharedInvoices.length){let rows=sharedInvoices.map(q=>`<tr><td>${q.id}</td><td>${q.request}</td><td>${q.client}</td><td>${q.total.toLocaleString()} ريال</td><td><span class="pill pred">${q.status}</span></td></tr>`).join("");table.innerHTML='<tr><th>الفاتورة</th><th>الطلب</th><th>العميل</th><th>القيمة</th><th>الحالة</th></tr>'+rows}}
 document.querySelector("#quotes .primary").onclick=openQuoteModal;
 renderQuoteTable();renderInvoiceTable();
+</script>
+
+<script>
+const LIVE_URL='https://jtdxzszooiewafrnxven.supabase.co';
+const LIVE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0ZHh6c3pvb2lld2Fmcm54dmVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MzM5MDksImV4cCI6MjEwNjUwOTkwOX0.MLBWLBGOz01R6zm9mf8K1Tx6oqHEHkWWlC8jw7O9-jU';
+let LIVE_TOKEN=localStorage.getItem("formation_admin_token")||"";
+let LIVE_USER=null, LIVE_PROFILE=null, LIVE_REQUESTS=[];
+
+async function liveFetch(path,opt={}){
+  const headers={apikey:LIVE_KEY,"Content-Type":"application/json",...(opt.headers||{})};
+  if(LIVE_TOKEN) headers.Authorization="Bearer "+LIVE_TOKEN;
+  return fetch(LIVE_URL+path,{...opt,headers});
+}
+function authMessage(t,err=false){
+ const e=document.getElementById("adminAuthMsg");
+ e.className="authmsg "+(err?"autherr":""); e.textContent=t;
+}
+async function adminLogin(){
+ const email=document.getElementById("adminEmail").value.trim();
+ const password=document.getElementById("adminPassword").value;
+ if(!email||!password)return authMessage("اكتب البريد وكلمة المرور.",true);
+ authMessage("جاري تسجيل الدخول...");
+ try{
+  const r=await liveFetch("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email,password})});
+  const d=await r.json();
+  if(!r.ok)return authMessage(d.error_description||d.message||"تعذر تسجيل الدخول",true);
+  LIVE_TOKEN=d.access_token; LIVE_USER=d.user;
+  localStorage.setItem("formation_admin_token",LIVE_TOKEN);
+  await verifyAdmin();
+ }catch(e){authMessage("تعذر الاتصال: "+e.message,true)}
+}
+async function verifyAdmin(){
+ try{
+  let ur=await liveFetch("/auth/v1/user"); if(!ur.ok)throw new Error("انتهت جلسة الدخول");
+  LIVE_USER=await ur.json();
+  let pr=await liveFetch("/rest/v1/profiles?select=id,full_name,role&eq.id="+encodeURIComponent(LIVE_USER.id));
+  let pd=await pr.json();
+  if(!pr.ok||!pd.length)throw new Error("تعذر قراءة صلاحية الحساب");
+  LIVE_PROFILE=pd[0];
+  if(!["admin","manager","employee"].includes(LIVE_PROFILE.role)){
+    localStorage.removeItem("formation_admin_token"); LIVE_TOKEN="";
+    return authMessage("هذا الحساب ليس حساب إدارة.",true);
+  }
+  document.getElementById("authGate").classList.add("hide");
+  document.getElementById("liveAdminName").textContent=LIVE_PROFILE.full_name||LIVE_USER.email;
+  await loadLiveRequests();
+ }catch(e){
+  localStorage.removeItem("formation_admin_token");LIVE_TOKEN="";
+  document.getElementById("authGate").classList.remove("hide");
+  authMessage(e.message,true);
+ }
+}
+function arStatus(x){return {new:"جديد",review:"قيد المراجعة",documents_required:"مطلوب مستندات",quote:"عرض سعر",payment:"الدفع",in_progress:"قيد التنفيذ",completed:"مكتمل",cancelled:"ملغي"}[x]||x}
+function arPriority(x){return {low:"منخفضة",medium:"متوسطة",high:"عالية",urgent:"عاجلة"}[x]||x}
+async function loadLiveRequests(){
+ const r=await liveFetch("/rest/v1/requests?select=*&order=created_at.desc");
+ const d=await r.json(); if(!r.ok)return alert(d.message||"تعذر تحميل الطلبات");
+ LIVE_REQUESTS=d;
+ document.querySelectorAll(".metric b")[0].textContent=d.filter(x=>x.status==="new").length;
+ document.querySelectorAll(".metric b")[1].textContent=d.filter(x=>["review","documents_required","quote","payment","in_progress"].includes(x.status)).length;
+ renderLiveRows();
+}
+function renderLiveRows(){
+ const body=document.getElementById("requestRows");
+ if(body) body.innerHTML=LIVE_REQUESTS.map(x=>`<tr><td>${x.request_no}</td><td>${x.customer_id.slice(0,8)}...</td><td>-</td><td>${x.service_name}</td><td><span class="pill pblue">${arStatus(x.status)}</span></td><td>${x.assigned_to?x.assigned_to.slice(0,8)+"...":"غير معين"}</td><td><button class="view" onclick="openLiveRequest('${x.id}')">فتح</button></td></tr>`).join("")||'<tr><td colspan="7">لا توجد طلبات حتى الآن.</td></tr>';
+ const recent=document.getElementById("recentRows");
+ if(recent) recent.innerHTML=LIVE_REQUESTS.slice(0,6).map(x=>`<tr><td>${x.request_no}</td><td>${x.customer_id.slice(0,8)}...</td><td>${x.service_name}</td><td><span class="pill pblue">${arStatus(x.status)}</span></td><td>${x.assigned_to?"معين":"غير معين"}</td><td>${new Date(x.created_at).toLocaleDateString("ar-SA")}</td><td><button class="view" onclick="openLiveRequest('${x.id}')">عرض</button></td></tr>`).join("");
+}
+function openLiveRequest(id){
+ const x=LIVE_REQUESTS.find(r=>r.id===id); if(!x)return;
+ document.getElementById("dTitle").textContent=x.service_name;
+ document.getElementById("dRef").textContent=x.request_no;
+ document.getElementById("drawerContent").innerHTML=`
+ <div class="detail-grid">
+ <div class="detail"><small>رقم الطلب</small><b>${x.request_no}</b></div>
+ <div class="detail"><small>الحالة</small><b>${arStatus(x.status)}</b></div>
+ <div class="detail"><small>الأولوية</small><b>${arPriority(x.priority)}</b></div>
+ <div class="detail"><small>نسبة الإنجاز</small><b>${x.progress}%</b></div></div>
+ <div class="sep"><h3>تحديث الطلب</h3>
+ <div class="formgrid"><div class="field"><label>الحالة</label><select id="liveStatus">
+ <option value="new">جديد</option><option value="review">قيد المراجعة</option><option value="documents_required">مطلوب مستندات</option><option value="quote">عرض سعر</option><option value="payment">الدفع</option><option value="in_progress">قيد التنفيذ</option><option value="completed">مكتمل</option><option value="cancelled">ملغي</option></select></div>
+ <div class="field"><label>الأولوية</label><select id="livePriority"><option value="low">منخفضة</option><option value="medium">متوسطة</option><option value="high">عالية</option><option value="urgent">عاجلة</option></select></div>
+ <div class="field full"><label>نسبة الإنجاز</label><input id="liveProgress" type="number" min="0" max="100" value="${x.progress}"></div></div>
+ <button class="btn primary" onclick="saveLiveRequest('${x.id}')">حفظ في Supabase</button></div>
+ <div class="sep"><h3>ملاحظات العميل</h3><div class="detail">${x.customer_notes||"لا توجد ملاحظات"}</div></div>`;
+ document.getElementById("liveStatus").value=x.status;
+ document.getElementById("livePriority").value=x.priority;
+ document.getElementById("drawer").classList.add("open");
+}
+async function saveLiveRequest(id){
+ const payload={status:document.getElementById("liveStatus").value,priority:document.getElementById("livePriority").value,progress:Number(document.getElementById("liveProgress").value)};
+ const r=await liveFetch("/rest/v1/requests?id=eq."+id,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(payload)});
+ const d=await r.json(); if(!r.ok)return alert(d.message||"فشل الحفظ");
+ alert("تم حفظ التعديل في قاعدة البيانات.");
+ document.getElementById("drawer").classList.remove("open"); await loadLiveRequests();
+}
+document.getElementById("adminLoginBtn").onclick=adminLogin;
+document.querySelector(".logout").onclick=async()=>{localStorage.removeItem("formation_admin_token");LIVE_TOKEN="";location.reload()};
+if(LIVE_TOKEN) verifyAdmin();
 </script>
 </body></html>
