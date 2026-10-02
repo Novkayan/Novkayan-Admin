@@ -26,8 +26,12 @@
 .authgate.hide{display:none}.authbox{width:min(430px,100%);background:#fff;border-radius:18px;padding:28px;box-shadow:0 25px 70px #0005}
 .authbox input{width:100%;padding:12px;border:1px solid #dce5ee;border-radius:9px;margin:7px 0}.authmsg{margin-top:12px;padding:10px;border-radius:8px;background:#eef6ff}.autherr{background:#fff0f0;color:#a22}
 .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#18b883;margin-left:6px}
+
+.live-loading{position:fixed;inset:0;background:#f4f7fb;z-index:9000;display:none;place-items:center;text-align:center}
+.live-loading.show{display:grid}.spinner{width:42px;height:42px;border:4px solid #dce8f5;border-top-color:#246ee9;border-radius:50%;margin:auto;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}.live-error{padding:14px;background:#fff0f0;color:#a22;border-radius:9px;margin:10px 0}
 </style></head>
-<body>
+<body><div id="liveLoading" class="live-loading"><div><div class="spinner"></div><h3>جاري تحميل لوحة الإدارة...</h3><p class="sub">يتم جلب البيانات من Supabase</p></div></div>
 <div class="authgate" id="authGate"><div class="authbox">
 <h2>دخول الإدارة</h2><p class="sub">لوحة الإدارة مرتبطة بقاعدة البيانات الحقيقية.</p>
 <input id="adminEmail" type="email" value="k@gmail.com" placeholder="البريد الإلكتروني">
@@ -221,21 +225,29 @@ async function adminLogin(){
 }
 async function verifyAdmin(){
  try{
+  document.getElementById("liveLoading").classList.add("show");
   let ur=await liveFetch("/auth/v1/user"); if(!ur.ok)throw new Error("انتهت جلسة الدخول");
   LIVE_USER=await ur.json();
-  let pr=await liveFetch("/rest/v1/profiles?select=id,full_name,role&id=eq."+encodeURIComponent(LIVE_USER.id));
-  let pd=await pr.json();
-  if(!pr.ok)throw new Error("خطأ قراءة الصلاحية: "+(pd.message||pd.code||pr.status)); if(!pd.length)throw new Error("الحساب مسجل لكن لا يوجد Profile مطابق له.");
-  LIVE_PROFILE=pd[0];
-  if(!["admin","manager","employee"].includes(LIVE_PROFILE.role)){
+  let sr=await liveFetch("/rest/v1/rpc/is_staff",{method:"POST",body:"{}"});
+  let staff=await sr.json();
+  if(!sr.ok)throw new Error("خطأ التحقق من صلاحية الإدارة: "+(staff.message||staff.code||sr.status));
+  if(staff!==true){
     localStorage.removeItem("formation_admin_token"); LIVE_TOKEN="";
-    return authMessage("هذا الحساب ليس حساب إدارة.",true);
+    return authMessage("الحساب مسجل، لكن ليست لديه صلاحية إدارة.",true);
   }
+  LIVE_PROFILE={full_name:(LIVE_USER.user_metadata&&LIVE_USER.user_metadata.full_name)||LIVE_USER.email,role:"admin"};
   document.getElementById("authGate").classList.add("hide");
-  document.getElementById("liveAdminName").textContent=LIVE_PROFILE.full_name||LIVE_USER.email;
+  document.getElementById("liveAdminName").textContent=LIVE_PROFILE.full_name;
+  // Force dashboard/home visible after successful authentication.
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById("home").classList.add("active");
+  document.querySelectorAll(".nav").forEach(n=>n.classList.remove("active"));
+  const homeNav=document.querySelector('.nav[data-page="home"]'); if(homeNav)homeNav.classList.add("active");
   await loadLiveRequests();
+  document.getElementById("liveLoading").classList.remove("show");
  }catch(e){
   localStorage.removeItem("formation_admin_token");LIVE_TOKEN="";
+  document.getElementById("liveLoading").classList.remove("show");
   document.getElementById("authGate").classList.remove("hide");
   authMessage(e.message,true);
  }
@@ -244,8 +256,15 @@ function arStatus(x){return {new:"جديد",review:"قيد المراجعة",doc
 function arPriority(x){return {low:"منخفضة",medium:"متوسطة",high:"عالية",urgent:"عاجلة"}[x]||x}
 async function loadLiveRequests(){
  const r=await liveFetch("/rest/v1/requests?select=*&order=created_at.desc");
- const d=await r.json(); if(!r.ok)return alert(d.message||"تعذر تحميل الطلبات");
- LIVE_REQUESTS=d;
+ const d=await r.json();
+ if(!r.ok){
+   LIVE_REQUESTS=[];
+   renderLiveRows();
+   const panel=document.querySelector("#home .wide");
+   if(panel)panel.insertAdjacentHTML("afterbegin",`<div class="live-error">تعذر تحميل الطلبات: ${d.message||d.code||r.status}</div>`);
+   return;
+ }
+ LIVE_REQUESTS=Array.isArray(d)?d:[];
  document.querySelectorAll(".metric b")[0].textContent=d.filter(x=>x.status==="new").length;
  document.querySelectorAll(".metric b")[1].textContent=d.filter(x=>["review","documents_required","quote","payment","in_progress"].includes(x.status)).length;
  renderLiveRows();
