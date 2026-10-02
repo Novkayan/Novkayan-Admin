@@ -223,9 +223,9 @@ async function verifyAdmin(){
  try{
   let ur=await liveFetch("/auth/v1/user"); if(!ur.ok)throw new Error("انتهت جلسة الدخول");
   LIVE_USER=await ur.json();
-  let pr=await liveFetch("/rest/v1/profiles?select=id,full_name,role&eq.id="+encodeURIComponent(LIVE_USER.id));
+  let pr=await liveFetch("/rest/v1/profiles?select=id,full_name,role&id=eq."+encodeURIComponent(LIVE_USER.id));
   let pd=await pr.json();
-  if(!pr.ok||!pd.length)throw new Error("تعذر قراءة صلاحية الحساب");
+  if(!pr.ok)throw new Error("خطأ قراءة الصلاحية: "+(pd.message||pd.code||pr.status)); if(!pd.length)throw new Error("الحساب مسجل لكن لا يوجد Profile مطابق له.");
   LIVE_PROFILE=pd[0];
   if(!["admin","manager","employee"].includes(LIVE_PROFILE.role)){
     localStorage.removeItem("formation_admin_token"); LIVE_TOKEN="";
